@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icon cho Android 7.x (API 24-25). Android 8+ dùng icon thích ứng trong drawable-v26. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#1E88E5"
+        android:pathData="M24,2 a22,22 0 1,1 0,44 a22,22 0 1,1 0,-44 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:pathData="M24,13 a11,11 0 1,1 0,22 a11,11 0 1,1 0,-22 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,20 a4,4 0 1,1 0,8 a4,4 0 1,1 0,-8 Z" />
+</vector>

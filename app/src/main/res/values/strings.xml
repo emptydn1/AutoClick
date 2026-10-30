@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AutoClick</string>
+    <string name="service_name">AutoClick</string>
+    <string name="service_description">Cho phép app tự click tại các điểm bạn đặt trên màn hình và dán chữ vào ô nhập. App không thu thập hay gửi dữ liệu của bạn đi đâu cả.</string>
+</resources>

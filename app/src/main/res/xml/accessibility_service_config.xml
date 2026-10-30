@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    canPerformGestures       : cho phép click bằng dispatchGesture()
+    canRetrieveWindowContent : cho phép tìm ô nhập chữ để dán
+    flagRetrieveInteractiveWindows : tìm ô nhập trên mọi cửa sổ đang hiện
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/service_description"
+    android:notificationTimeout="100"
+    android:settingsActivity="com.example.autoclickpaste.MainActivity" />

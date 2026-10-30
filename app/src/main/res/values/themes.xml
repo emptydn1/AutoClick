@@ -1,0 +1,11 @@
+<resources>
+    <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">#1E6FD9</item>
+        <item name="android:colorPrimaryDark">#1557B0</item>
+        <item name="android:colorAccent">#1E6FD9</item>
+        <!-- Thanh trạng thái cùng màu thanh tiêu đề, chữ / biểu tượng trắng -->
+        <item name="android:statusBarColor">#1E6FD9</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@color/app_background</item>
+    </style>
+</resources>
