@@ -31,7 +31,7 @@ Các chỗ khác trong app tự lấy tên mới. Không cần đổi mã gói `
 
 | Nút | Chức năng |
 |---|---|
-| ▶ Chạy / ■ Dừng | Chạy lần lượt điểm 1 → 2 → 3… rồi lặp lại |
+| ▶ Chạy / ■ Dừng | Chạy lần lượt điểm 1 → 2 → 3… rồi lặp lại. Tắt màn hình thì tự dừng |
 | + Thêm | Thêm một điểm click (vòng tròn **xanh dương**) |
 | − Xóa | Xóa điểm cuối cùng |
 | ⚙ Cài đặt | Số vòng lặp (0 = vô hạn), thời gian chờ mặc định, lưu / mở cấu hình nhanh, xóa tất cả |

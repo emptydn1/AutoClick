@@ -4,10 +4,12 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
+import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -115,6 +117,14 @@ class ClickService : AccessibilityService() {
 
     private val isPlaying: Boolean get() = playJob?.isActive == true
 
+    /** Tắt màn hình (bấm nút nguồn / hết thời gian chờ) thì dừng chạy. */
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_SCREEN_OFF) stopPlaying()
+        }
+    }
+    private var screenOffRegistered = false
+
     /** Độ đậm bình thường của bảng / điểm, và khi điểm mờ đi lúc đang chạy. */
     private val normalAlpha: Float get() = appearance.opacity / 100f
     private val dimAlpha: Float get() = normalAlpha * 0.5f
@@ -129,6 +139,7 @@ class ClickService : AccessibilityService() {
         config = ConfigStore.load(this)
         appearance = AppearanceStore.load(this)
         instance = this
+        registerScreenOffReceiver()
         if (config.panelVisible) showOverlay()
         // Vừa cấp quyền từ nút BẬT trong app → tự quay về màn hình app (chờ Cài đặt đóng hộp thoại xong)
         if (GrantReturn.consume(this)) {
@@ -198,6 +209,30 @@ class ClickService : AccessibilityService() {
         playJob?.cancel()
         removeOverlayViews()
         scope.cancel()
+        if (screenOffRegistered) {
+            screenOffRegistered = false
+            try {
+                unregisterReceiver(screenOffReceiver)
+            } catch (e: Exception) {
+                // đã được hủy đăng ký từ trước
+            }
+        }
+    }
+
+    /** Lắng nghe sự kiện tắt màn hình (chỉ đăng ký được trong code, không khai báo trong Manifest). */
+    private fun registerScreenOffReceiver() {
+        if (screenOffRegistered) return
+        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+        try {
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(screenOffReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(screenOffReceiver, filter)
+            }
+            screenOffRegistered = true
+        } catch (e: Exception) {
+            // Không đăng ký được thì vẫn chạy bình thường, chỉ là không tự dừng khi tắt màn hình
+        }
     }
 
     // ───────────────────────────── Bật / tắt, thu nhỏ ─────────────────────────────
