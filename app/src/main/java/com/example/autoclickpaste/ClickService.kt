@@ -20,6 +20,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.text.InputType
 import android.text.TextUtils
 import android.util.DisplayMetrics
@@ -44,6 +45,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.math.PI
 import kotlin.math.abs
@@ -73,6 +75,8 @@ class ClickService : AccessibilityService() {
         private const val BUBBLE_SIZE_DP = 40         // nút tròn khi thu nhỏ bảng (ở kích cỡ 100%)
         private const val END_MARKER_RATIO = 0.82f    // vòng tròn "thả" nhỏ hơn vòng "kéo" một chút
         private const val TAP_DURATION_MS = 50L       // thời gian "chạm" của 1 cú click
+        private const val CLICK_GAP_MS = 100L         // khoảng cách giữa các lần click của cùng 1 điểm
+        private const val COUNTDOWN_TICK_MS = 100L    // cập nhật số giây trên nút Dừng mỗi 0,1 giây
         private const val MIN_STEP_DELAY_MS = 10L     // chặn vòng lặp quá nhanh làm đơ máy
         private const val FOCUS_POLL_MS = 100L        // sau khi click, dò ô nhập mỗi 100 ms…
         private const val FOCUS_POLL_TRIES = 15       // …tối đa khoảng 1,5 giây
@@ -116,6 +120,9 @@ class ClickService : AccessibilityService() {
     private var lineParams: WindowManager.LayoutParams? = null
 
     private val isPlaying: Boolean get() = playJob?.isActive == true
+
+    private var nextStepAt = 0L                       // lúc chuyển sang bước tiếp theo (SystemClock.uptimeMillis)
+    private var countdownJob: Job? = null             // cập nhật số giây đếm ngược trên nút Dừng
 
     /** Tắt màn hình (bấm nút nguồn / hết thời gian chờ) thì dừng chạy. */
     private val screenOffReceiver = object : BroadcastReceiver() {
@@ -581,6 +588,8 @@ class ClickService : AccessibilityService() {
         }
 
         setPlayingUi(true)
+        nextStepAt = SystemClock.uptimeMillis() + START_DELAY_MS
+        startCountdown()
         playJob = scope.launch {
             val myJob = coroutineContext[Job]
             var pasteWarned = false
@@ -593,8 +602,14 @@ class ClickService : AccessibilityService() {
                     for ((i, step) in steps.withIndex()) {
                         highlight(i)
                         val t = step.marker.target
+                        val wait = max(t.delayMs, MIN_STEP_DELAY_MS)
+                        // Đếm ngược tới bước sau = thời gian thao tác (ước lượng) + thời gian chờ
+                        nextStepAt = SystemClock.uptimeMillis() + expectedActionMs(t) + wait
                         when (t.type) {
-                            TargetType.CLICK -> tap(step.x, step.y)
+                            TargetType.CLICK -> repeat(t.clicks.coerceIn(1, ClickTarget.MAX_CLICKS)) { n ->
+                                if (n > 0) delay(CLICK_GAP_MS)
+                                tap(step.x, step.y)
+                            }
                             TargetType.HOLD -> press(step.x, step.y, t.pressMs)
                             TargetType.PASTE -> {
                                 tap(step.x, step.y)
@@ -605,7 +620,9 @@ class ClickService : AccessibilityService() {
                             }
                             TargetType.DRAG -> drag(step.x, step.y, step.x2, step.y2, t.holdMs, t.dragMs)
                         }
-                        delay(max(t.delayMs, MIN_STEP_DELAY_MS))
+                        // Thao tác xong: đếm ngược đúng bằng thời gian chờ còn lại
+                        nextStepAt = SystemClock.uptimeMillis() + wait
+                        delay(wait)
                     }
                     loop++
                 }
@@ -614,11 +631,49 @@ class ClickService : AccessibilityService() {
                 // Chỉ trả giao diện về trạng thái "dừng" nếu chưa có lượt chạy mới
                 if (playJob === myJob) {
                     playJob = null
+                    stopCountdown()
                     setPlayingUi(false)
                 }
             }
         }
     }
+
+    /** Thời gian ước lượng của thao tác ở 1 điểm (để đếm ngược mượt cả lúc đang click / giữ / kéo). */
+    private fun expectedActionMs(t: ClickTarget): Long = when (t.type) {
+        TargetType.CLICK -> {
+            val n = t.clicks.coerceIn(1, ClickTarget.MAX_CLICKS)
+            n * TAP_DURATION_MS + (n - 1) * CLICK_GAP_MS
+        }
+        TargetType.HOLD -> t.pressMs.coerceIn(1L, MAX_GESTURE_MS)
+        TargetType.PASTE -> TAP_DURATION_MS
+        TargetType.DRAG -> {
+            val hold = if (t.holdMs > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) t.holdMs else 0L
+            hold + t.dragMs
+        }
+    }
+
+    /** Hiện số giây còn lại tới bước tiếp theo ở giữa nút Dừng, cập nhật mỗi 0,1 giây. */
+    private fun startCountdown() {
+        countdownJob?.cancel()
+        countdownJob = scope.launch {
+            while (isActive) {
+                val left = (nextStepAt - SystemClock.uptimeMillis()).coerceAtLeast(0L)
+                playButton?.setIconLabel(formatSeconds(left))
+                delay(COUNTDOWN_TICK_MS)
+            }
+        }
+    }
+
+    private fun stopCountdown() {
+        countdownJob?.cancel()
+        countdownJob = null
+        playButton?.setIconLabel(null)
+    }
+
+    /** Dưới 10 giây: 1 số lẻ (2,4); từ 10 giây trở lên: số nguyên làm tròn lên (12). */
+    private fun formatSeconds(ms: Long): String =
+        if (ms < 10_000L) String.format(Locale.getDefault(), "%.1f", ms / 1000.0)
+        else ((ms + 999) / 1000).toString()
 
     private fun setPlayingUi(playing: Boolean) {
         playButton?.setIcon(if (playing) PanelIcon.STOP else PanelIcon.PLAY)
@@ -795,6 +850,14 @@ class ClickService : AccessibilityService() {
         val types = listOf(TargetType.CLICK, TargetType.HOLD, TargetType.PASTE, TargetType.DRAG)
         var selected = t.type
 
+        // Click
+        val (clicksRow, clicksInput) = ctx.numberRow("Số lần click", t.clicks.toLong(), "lần")
+        val clickSection = ctx.column(
+            ctx.groupLabel("CLICK"),
+            clicksRow,
+            ctx.helpText("Các lần click cách nhau 0,1 giây. 1 = click thường, 2 = nhấp đúp."),
+        )
+
         // Nhấn giữ
         val (pressRow, pressInput) = ctx.numberRow("Thời gian nhấn giữ", t.pressMs, "ms")
         val holdSection = ctx.column(
@@ -826,6 +889,7 @@ class ClickService : AccessibilityService() {
         )
 
         val updateSections = {
+            clickSection.visibility = if (selected == TargetType.CLICK) View.VISIBLE else View.GONE
             holdSection.visibility = if (selected == TargetType.HOLD) View.VISIBLE else View.GONE
             pasteSection.visibility = if (selected == TargetType.PASTE) View.VISIBLE else View.GONE
             dragSection.visibility = if (selected == TargetType.DRAG) View.VISIBLE else View.GONE
@@ -838,6 +902,7 @@ class ClickService : AccessibilityService() {
 
         sheet.body.addView(chips, ctx.matchWrap(4))
         sheet.body.addView(delayRow, ctx.matchWrap(12))
+        sheet.body.addView(clickSection)
         sheet.body.addView(holdSection)
         sheet.body.addView(pasteSection)
         sheet.body.addView(dragSection)
@@ -849,6 +914,8 @@ class ClickService : AccessibilityService() {
             val oldType = t.type
             t.type = selected
             t.delayMs = parseMs(delayInput.text.toString(), t.delayMs)
+            t.clicks = parseMs(clicksInput.text.toString(), t.clicks.toLong())
+                .coerceIn(1L, ClickTarget.MAX_CLICKS.toLong()).toInt()
             t.text = textInput.text.toString()
             t.pasteMode = if (replaceSwitch.isChecked) PasteMode.REPLACE_ALL else PasteMode.PASTE_AT_CURSOR
             t.pressMs = parseMs(pressInput.text.toString(), t.pressMs).coerceIn(1L, MAX_GESTURE_MS)

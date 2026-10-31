@@ -33,7 +33,12 @@ class ClickTarget(
     var dragMs: Long = 500,            // thời gian kéo từ điểm đầu tới điểm thả
     var holdMs: Long = 0,              // nhấn giữ ở điểm đầu trước khi kéo (0 = vuốt ngay)
     var pressMs: Long = 1000,          // thời gian nhấn giữ (điểm HOLD)
-)
+    var clicks: Int = 1,               // số lần click liên tiếp (điểm CLICK)
+) {
+    companion object {
+        const val MAX_CLICKS = 1000
+    }
+}
 
 /** Toàn bộ cấu hình đang dùng, được lưu tự động để lần sau mở vẫn còn. */
 class Config(
@@ -103,6 +108,7 @@ object ConfigStore {
                     .put("dragMs", t.dragMs)
                     .put("holdMs", t.holdMs)
                     .put("pressMs", t.pressMs)
+                    .put("clicks", t.clicks)
             )
         }
         return arr
@@ -126,6 +132,7 @@ object ConfigStore {
                     dragMs = t.optLong("dragMs", 500),
                     holdMs = t.optLong("holdMs", 0),
                     pressMs = t.optLong("pressMs", 1000),
+                    clicks = t.optInt("clicks", 1).coerceIn(1, ClickTarget.MAX_CLICKS),
                 )
             )
         }

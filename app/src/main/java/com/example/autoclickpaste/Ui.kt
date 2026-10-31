@@ -79,6 +79,20 @@ class IconDrawable(private val icon: PanelIcon, tint: Int) : Drawable() {
     }
     private val path = Path()
 
+    /** Nút Dừng: số giây đếm ngược vẽ giữa ô vuông (null = ô vuông Dừng thường). */
+    var label: String? = null
+        set(value) {
+            if (field == value) return
+            field = value
+            invalidateSelf()
+        }
+    private val labelBoxPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFE5484D.toInt() }
+    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT_BOLD
+    }
+
     override fun draw(canvas: Canvas) {
         val b = bounds
         val s = min(b.width(), b.height()).toFloat()
@@ -98,9 +112,22 @@ class IconDrawable(private val icon: PanelIcon, tint: Int) : Drawable() {
                 paint.pathEffect = null
             }
             PanelIcon.STOP -> {
-                paint.style = Paint.Style.FILL
-                val h = s * 0.27f
-                canvas.drawRoundRect(cx - h, cy - h, cx + h, cy + h, s * 0.08f, s * 0.08f, paint)
+                val text = label
+                if (text.isNullOrEmpty()) {
+                    paint.style = Paint.Style.FILL
+                    val h = s * 0.27f
+                    canvas.drawRoundRect(cx - h, cy - h, cx + h, cy + h, s * 0.08f, s * 0.08f, paint)
+                } else {
+                    // Ô vuông Dừng to gần bằng cả nút, số giây chữ trắng ở giữa (tự thu nhỏ cho vừa)
+                    val h = s * 0.48f
+                    canvas.drawRoundRect(cx - h, cy - h, cx + h, cy + h, s * 0.16f, s * 0.16f, labelBoxPaint)
+                    labelPaint.textSize = s * 0.44f
+                    val maxWidth = h * 2f * 0.84f
+                    val width = labelPaint.measureText(text)
+                    if (width > maxWidth) labelPaint.textSize = labelPaint.textSize * maxWidth / width
+                    val fm = labelPaint.fontMetrics
+                    canvas.drawText(text, cx, cy - (fm.ascent + fm.descent) / 2f, labelPaint)
+                }
             }
             PanelIcon.ADD, PanelIcon.REMOVE -> {
                 paint.style = Paint.Style.STROKE
@@ -143,6 +170,8 @@ class IconDrawable(private val icon: PanelIcon, tint: Int) : Drawable() {
 
     override fun setAlpha(alpha: Int) {
         paint.alpha = alpha
+        labelBoxPaint.alpha = alpha
+        labelPaint.alpha = alpha
         invalidateSelf()
     }
 
@@ -179,7 +208,8 @@ fun makePanelContainer(ctx: Context, a: Appearance): LinearLayout = LinearLayout
 
 /** 1 nút trên bảng điều khiển: ô vuông có biểu tượng (và chữ nhỏ nếu bật). */
 class PanelButton(ctx: Context, icon: PanelIcon, caption: String, a: Appearance) {
-    private val image = ImageView(ctx).apply { setImageDrawable(IconDrawable(icon, iconColor(icon))) }
+    private var iconDrawable = IconDrawable(icon, iconColor(icon))
+    private val image = ImageView(ctx).apply { setImageDrawable(iconDrawable) }
     private val label: TextView? = if (a.showCaptions) {
         TextView(ctx).apply {
             text = caption
@@ -211,7 +241,15 @@ class PanelButton(ctx: Context, icon: PanelIcon, caption: String, a: Appearance)
         isClickable = true
     }
 
-    fun setIcon(icon: PanelIcon) = image.setImageDrawable(IconDrawable(icon, iconColor(icon)))
+    fun setIcon(icon: PanelIcon) {
+        iconDrawable = IconDrawable(icon, iconColor(icon))
+        image.setImageDrawable(iconDrawable)
+    }
+
+    /** Chữ nhỏ ở giữa biểu tượng – số giây đếm ngược trên nút Dừng; null = bỏ. */
+    fun setIconLabel(text: String?) {
+        iconDrawable.label = text
+    }
 
     fun setCaption(text: String) {
         label?.text = text

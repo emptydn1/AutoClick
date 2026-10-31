@@ -31,7 +31,7 @@ Các chỗ khác trong app tự lấy tên mới. Không cần đổi mã gói `
 
 | Nút | Chức năng |
 |---|---|
-| ▶ Chạy / ■ Dừng | Chạy lần lượt điểm 1 → 2 → 3… rồi lặp lại. Tắt màn hình thì tự dừng |
+| ▶ Chạy / ■ Dừng | Chạy lần lượt điểm 1 → 2 → 3… rồi lặp lại. Khi đang chạy, giữa nút Dừng hiện số giây còn lại tới bước tiếp theo. Tắt màn hình thì tự dừng |
 | + Thêm | Thêm một điểm click (vòng tròn **xanh dương**) |
 | − Xóa | Xóa điểm cuối cùng |
 | ⚙ Cài đặt | Số vòng lặp (0 = vô hạn), thời gian chờ mặc định, lưu / mở cấu hình nhanh, xóa tất cả |
@@ -44,7 +44,7 @@ Kéo vòng tròn tới đúng chỗ cần thao tác – **chấm ở tâm** là 
 
 | Loại | Màu | Làm gì |
 |---|---|---|
-| Chỉ click | Xanh dương | Chạm 1 lần vào tâm vòng tròn |
+| Chỉ click | Xanh dương | Chạm vào tâm vòng tròn đủ *Số lần click* (mặc định 1; các lần cách nhau 0,1 giây, 2 = nhấp đúp) |
 | Nhấn giữ | Tím | Giữ yên ngón tay tại tâm vòng tròn trong *thời gian nhấn giữ* (mặc định 1000 ms, tối đa 59 giây) rồi nhả |
 | Click rồi dán chữ | Cam | Chạm vào ô nhập rồi dán nội dung bạn nhập sẵn |
 | Kéo thả | Xanh lá | Có thêm vòng tròn **"thả"** và mũi tên. Kéo từ vòng "kéo" tới vòng "thả" |
